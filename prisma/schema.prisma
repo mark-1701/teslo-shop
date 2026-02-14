@@ -1,0 +1,178 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Size {
+  XS
+  S
+  M
+  L
+  XL
+  XXL
+  XXXL
+}
+
+enum Gender {
+  men
+  women
+  kid
+  unisex
+}
+
+enum Role {
+  admin
+  user
+}
+
+model Category {
+  id   String @id @default(uuid())
+  name String @unique
+
+  // relations
+  products Product[]
+}
+
+model ProductImage {
+  id  Int    @id @default(autoincrement())
+  url String
+
+  // relations
+  product Product @relation(fields: [productId], references: [id])
+
+  // foreign keys
+  productId String
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  inStock     Int
+  price       Float    @default(0)
+  sizes       Size[]   @default([])
+  slug        String   @unique
+  tags        String[] @default([])
+  gender      Gender
+
+  // relations (de uno a muchos)
+  category Category @relation(fields: [categoryId], references: [id])
+
+  productImages ProductImage[]
+  orderItems    OrderItems[]
+
+  // foreign keys
+  categoryId String
+
+  @@index([gender])
+}
+
+model User {
+  id            String    @id @default(uuid())
+  name          String
+  email         String    @unique
+  emailVerified DateTime?
+  password      String
+  role          Role      @default(user)
+  image         String?
+
+  // relations
+  userAddresses UserAddress? // uno a uno (UserAddress)
+  orders        Order[]
+}
+
+model Country {
+  id   String @id
+  name String
+
+  // relations
+  userAddresses  UserAddress[]
+  orderAddresses OrderAddress[]
+}
+
+model UserAddress {
+  id         String  @id @default(uuid())
+  firstName  String
+  lastName   String
+  address    String
+  address2   String?
+  postalCode String
+  phone      String
+  city       String
+
+  // relations
+  country Country @relation(fields: [countryId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+
+  // foreign keys
+  countryId String
+  userId    String @unique
+}
+
+// Order de compras
+model Order {
+  id           String    @id @default(uuid())
+  subTotal     Float
+  tax          Float
+  total        Float
+  itemsInOrder Int
+  IsPaid       Boolean   @default(false)
+  paidAt       DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // relations
+  user User @relation(fields: [userId], references: [id])
+
+  orderItems     OrderItems[]
+  orderAddresses OrderAddress? // uno a uno (OrderAddress)
+
+  // foreign keys
+  userId String
+
+  transactionId String? // ! id de proveedor de pagos
+}
+
+model OrderItems {
+  id       String @id @default(uuid())
+  quantity Int
+  price    Float // precio del artículo en el momento
+  size     Size
+
+  // relations
+  order   Order   @relation(fields: [orderId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  // foreign keys
+  orderId   String
+  productId String
+}
+
+model OrderAddress {
+  id         String  @id @default(uuid())
+  firstName  String
+  lastName   String
+  address    String
+  address2   String?
+  postalCode String
+  city       String
+  phone      String
+
+  // relations
+  country Country @relation(fields: [countryId], references: [id])
+  order   Order   @relation(fields: [orderId], references: [id])
+
+  // foreign keys
+  countryId String
+  orderId   String @unique
+}
